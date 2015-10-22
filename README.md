@@ -27,3 +27,25 @@ Cons:
 
 * Refresh is not async by default
 * Not completely java 8 friendly
+
+## Caffeine cache
+
+Applicative cache from Ben Manes (Guava committer) (https://github.com/ben-manes/caffeine)
+
+Pro:
+
+* Feature complete (self loading cache, refresh strategy, stats,...)
+* Excellent performances
+* Async refresh by default
+* Easy to test
+* Java 8 friendly
+
+Cons:
+
+* Less battle tested than Guava cache
+
+Tips:
+
+* By default uses ForkJoinPool.commonPool() to maintenance tasks and refresh calls. 
+  ForkJoinPool is not design to handle blocking IO.
+  Thus prefer a dedicated ExecutorService for this purpose.
