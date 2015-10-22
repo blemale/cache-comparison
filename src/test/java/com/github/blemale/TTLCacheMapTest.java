@@ -17,7 +17,7 @@ public class TTLCacheMapTest {
     @Test
     public void should_cache_result() throws Exception {
         // Given
-        HashService service = new HashService();
+        HashServiceWithTTLCacheMap service = new HashServiceWithTTLCacheMap();
 
         // When
         service.computeHash("toto");
@@ -31,7 +31,7 @@ public class TTLCacheMapTest {
     @Ignore
     public void should_handle_population_by_multiple_threads() throws Exception {
         // Given
-        HashService service = new HashService();
+        HashServiceWithTTLCacheMap service = new HashServiceWithTTLCacheMap();
         ExecutorService executorService = Executors.newFixedThreadPool(4);
 
         // When
@@ -45,11 +45,11 @@ public class TTLCacheMapTest {
         assertThat(service.callsCount()).isEqualTo(1);
     }
 
-    public static class HashService {
+    public static class HashServiceWithTTLCacheMap {
         private final TTLCacheMap<String, Integer> cache = new TTLCacheMap<>(1_000, false, 10);
         private final LongAdder counter = new LongAdder();
 
-        public int computeHash(String string) {
+        public Integer computeHash(String string) {
             Integer cachedHash = cache.get(string);
             if (cachedHash != null) {
                 return cachedHash;
@@ -78,7 +78,5 @@ public class TTLCacheMapTest {
             }
         }
     }
-
-
 
 }
