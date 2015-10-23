@@ -3,40 +3,26 @@
  */
 package com.github.blemale;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.github.benmanes.caffeine.cache.Ticker;
-import org.junit.Test;
-
+import static java.util.Objects.hash;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
-
-import static java.util.Objects.hash;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.Test;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.Ticker;
 
 public class CaffeineCacheTest {
-    @Test
-    public void should_cache_result_with_cache() throws Exception {
-        // Given
-        HashServiceWithCaffeinCache service = new HashServiceWithCaffeinCache();
 
-        // When
-        service.computeHash("toto");
-        service.computeHash("toto");
-
-        // Then
-        assertThat(service.callsCount()).isEqualTo(1);
-    }
-
-    public static class HashServiceWithCaffeinCache {
+    public static class HashServiceWithCaffeineCache {
         private final Cache<String, Integer> cache =
-                Caffeine.newBuilder().expireAfterWrite(1, SECONDS).maximumSize(10).build();
+            Caffeine.newBuilder().expireAfterWrite(1, SECONDS).maximumSize(10).build();
 
         private final LongAdder counter = new LongAdder();
 
@@ -46,6 +32,56 @@ public class CaffeineCacheTest {
 
         public long callsCount() {
             return counter.sum();
+        }
+
+        private int computeComplicatedHash(String string) {
+            counter.increment();
+            sleep(100);
+            return hash(string);
+        }
+
+        private void sleep(int millis) {
+            try {
+                Thread.sleep(millis);
+            } catch (InterruptedException e) {
+                System.out.println("Interrupted");
+            }
+        }
+    }
+
+    @Test
+    public void should_cache_result_with_cache() throws Exception {
+        // Given
+        HashServiceWithCaffeineCache service = new HashServiceWithCaffeineCache();
+
+        // When
+        service.computeHash("toto");
+        service.computeHash("toto");
+
+        // Then
+        assertThat(service.callsCount()).isEqualTo(1);
+    }
+
+    public static class HashServiceWithCaffeineLoadingCache {
+        private final LoadingCache<String, Integer> cache;
+
+        private final LongAdder counter = new LongAdder();
+        private final LongAdder refreshCounter = new LongAdder();
+
+        public HashServiceWithCaffeineLoadingCache() {
+            cache = Caffeine.newBuilder().refreshAfterWrite(1, SECONDS).maximumSize(10).recordStats().build(this::computeComplicatedHash);
+        }
+
+        public Integer computeHash(String string) {
+            return cache.get(string);
+        }
+
+        public long callsCount() {
+            return counter.sum();
+        }
+
+        public long refreshCount() {
+            return refreshCounter.sum();
         }
 
         private int computeComplicatedHash(String string) {
@@ -123,43 +159,6 @@ public class CaffeineCacheTest {
         // Then
         assertThat(service.cache.stats().hitCount()).isEqualTo(2);
         System.out.println(service.cache.stats());
-    }
-
-    public static class HashServiceWithCaffeineLoadingCache {
-        private final LoadingCache<String, Integer> cache;
-
-        private final LongAdder counter = new LongAdder();
-        private final LongAdder refreshCounter = new LongAdder();
-
-        public HashServiceWithCaffeineLoadingCache() {
-            cache = Caffeine.newBuilder().refreshAfterWrite(1, SECONDS).maximumSize(10).recordStats().build(this::computeComplicatedHash);
-        }
-
-        public Integer computeHash(String string) {
-            return cache.get(string);
-        }
-
-        public long callsCount() {
-            return counter.sum();
-        }
-
-        public long refreshCount() {
-            return refreshCounter.sum();
-        }
-
-        private int computeComplicatedHash(String string) {
-            counter.increment();
-            sleep(100);
-            return hash(string);
-        }
-
-        private void sleep(int millis) {
-            try {
-                Thread.sleep(millis);
-            } catch (InterruptedException e) {
-                System.out.println("Interrupted");
-            }
-        }
     }
 
     private final Ticker ticker = new FixedTicker();

@@ -1,49 +1,16 @@
 package com.github.blemale;
 
-import org.junit.Ignore;
-import org.junit.Test;
-
+import static java.util.Objects.hash;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.LongAdder;
-
-import static java.util.Objects.hash;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.Ignore;
+import org.junit.Test;
 
 public class TTLCacheMapTest {
-
-    @Test
-    public void should_cache_result() throws Exception {
-        // Given
-        HashServiceWithTTLCacheMap service = new HashServiceWithTTLCacheMap();
-
-        // When
-        service.computeHash("toto");
-        service.computeHash("toto");
-
-        // Then
-        assertThat(service.callsCount()).isEqualTo(1);
-    }
-
-    @Test
-    @Ignore
-    public void should_handle_population_by_multiple_threads() throws Exception {
-        // Given
-        HashServiceWithTTLCacheMap service = new HashServiceWithTTLCacheMap();
-        ExecutorService executorService = Executors.newFixedThreadPool(4);
-
-        // When
-        CompletableFuture<Void> future1 = CompletableFuture.runAsync(() -> service.computeHash("toto"), executorService);
-        CompletableFuture<Void> future2 = CompletableFuture.runAsync(() -> service.computeHash("toto"), executorService);
-        CompletableFuture<Void> future3 = CompletableFuture.runAsync(() -> service.computeHash("toto"), executorService);
-        CompletableFuture<Void> future4 = CompletableFuture.runAsync(() -> service.computeHash("toto"), executorService);
-        CompletableFuture.allOf(future1, future2, future3, future4).get(200, MILLISECONDS);
-
-        // Then
-        assertThat(service.callsCount()).isEqualTo(1);
-    }
 
     public static class HashServiceWithTTLCacheMap {
         private final TTLCacheMap<String, Integer> cache = new TTLCacheMap<>(1_000, false, 10);
@@ -77,6 +44,37 @@ public class TTLCacheMapTest {
                 System.out.println("Interrupted");
             }
         }
+    }
+
+    @Test
+    public void should_cache_result() throws Exception {
+        // Given
+        HashServiceWithTTLCacheMap service = new HashServiceWithTTLCacheMap();
+
+        // When
+        service.computeHash("toto");
+        service.computeHash("toto");
+
+        // Then
+        assertThat(service.callsCount()).isEqualTo(1);
+    }
+
+    @Test
+    @Ignore
+    public void should_handle_population_by_multiple_threads() throws Exception {
+        // Given
+        HashServiceWithTTLCacheMap service = new HashServiceWithTTLCacheMap();
+        ExecutorService executorService = Executors.newFixedThreadPool(4);
+
+        // When
+        CompletableFuture<Void> future1 = CompletableFuture.runAsync(() -> service.computeHash("toto"), executorService);
+        CompletableFuture<Void> future2 = CompletableFuture.runAsync(() -> service.computeHash("toto"), executorService);
+        CompletableFuture<Void> future3 = CompletableFuture.runAsync(() -> service.computeHash("toto"), executorService);
+        CompletableFuture<Void> future4 = CompletableFuture.runAsync(() -> service.computeHash("toto"), executorService);
+        CompletableFuture.allOf(future1, future2, future3, future4).get(200, MILLISECONDS);
+
+        // Then
+        assertThat(service.callsCount()).isEqualTo(1);
     }
 
 }
